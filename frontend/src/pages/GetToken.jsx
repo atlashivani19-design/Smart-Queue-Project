@@ -1,373 +1,339 @@
-
 import { useEffect, useState } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
 
-import {
-  getServicesByLocation,
-  generateToken
-} from "../services/api";
-
-
-function GetToken() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-
-  const user = JSON.parse(localStorage.getItem("user") || "null");
-
-  const [locations, setLocations] = useState([]);
-  const [selectedLocation, setSelectedLocation] = useState("");
+function AdminDashboard() {
+  const [serviceId, setServiceId] = useState("");
   const [services, setServices] = useState([]);
-  const [selectedService, setSelectedService] = useState("");
+  const [queue, setQueue] = useState([]);
 
-  const [loadingLocations, setLoadingLocations] = useState(true);
-  const [loadingServices, setLoadingServices] = useState(false);
-  const [generating, setGenerating] = useState(false);
-
-  const [error, setError] = useState("");
-  const [token, setToken] = useState(null);
-
-  // Load available locations
   useEffect(() => {
-    const loadLocations = async () => {
-      try {
-        setLoadingLocations(true);
-        setError("");
+    fetch("http://localhost:8080/api/services")
+      .then((response) => response.json())
+      .then((data) => setServices(data))
+      .catch((error) => console.error(error));
+  }, []);
 
-        const response = await fetch(
-          "http://localhost:8080/api/locations"
-        );
-
-        if (!response.ok) {
-          throw new Error("Unable to load locations.");
-        }
-
-        const data = await response.json();
-        setLocations(data);
-
-        // Select a location from the URL if supplied
-        const locationId = searchParams.get("locationId");
-
-        if (locationId && data.some(
-          (location) => String(location.id) === locationId
-        )) {
-          setSelectedLocation(locationId);
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Unable to load locations. Please try again.");
-      } finally {
-        setLoadingLocations(false);
-      }
-    };
-
-    loadLocations();
-  }, [searchParams]);
-
-  // Load services whenever the selected location changes
-  useEffect(() => {
-    if (!selectedLocation) {
-      setServices([]);
-      setSelectedService("");
+  const getQueue = () => {
+    if (!serviceId) {
       return;
     }
 
-    const loadLocationServices = async () => {
-      try {
-        setLoadingServices(true);
-        setError("");
-        setServices([]);
-        setSelectedService("");
-
-        const response = await getServicesByLocation(
-          selectedLocation
-        );
-
-        setServices(response.data);
-
-        // Select a service from the URL if supplied
-        const serviceId = searchParams.get("serviceId");
-
-        if (serviceId && response.data.some(
-          (service) => String(service.id) === serviceId
-        )) {
-          setSelectedService(serviceId);
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Unable to load services for this location.");
-      } finally {
-        setLoadingServices(false);
-      }
-    };
-
-    loadLocationServices();
-  }, [selectedLocation, searchParams]);
-
-  // Generate token
-  const handleGenerate = async () => {
-    if (!selectedLocation) {
-      setError("Please select a location first.");
-      return;
-    }
-
-    if (!selectedService) {
-      setError("Please select a service first.");
-      return;
-    }
-
-    if (!user?.id) {
-      navigate("/login");
-      return;
-    }
-
-    try {
-      setGenerating(true);
-      setError("");
-
-      const response = await generateToken(
-        user.id,
-        selectedService
-      );
-
-      setToken(response.data);
-    } catch (err) {
-      console.error(err);
-      setError(
-        typeof err?.response?.data === "string"
-          ? err.response.data
-          : "Unable to generate token. Please try again."
-      );
-    } finally {
-      setGenerating(false);
-    }
+   fetch(
+  `https://smart-queue-project-3.onrender.com/api/admin/queue/${serviceId}`
+)
+      .then((response) => response.json())
+      .then((data) => setQueue(data))
+      .catch((error) => console.error(error));
   };
 
-  // Token success screen
-  if (token) {
-    return (
-      <main className="token-page">
-        <div className="token-success-card">
-          <div className="success-icon">✓</div>
+  const callNext = () => {
+    if (!serviceId) {
+      return;
+    }
 
-          <div className="success-label">
-            TOKEN GENERATED
-          </div>
+    fetch(
+      http://localhost:8080/api/admin/next/${serviceId},
+      {
+        method: "POST",
+      }
+    )
+      .then((response) => response.json())
+      .then(() => {
+        getQueue();
+      })
+      .catch((error) => console.error(error));
+  };
 
-          <h1>You're in the queue!</h1>
-
-          <p>
-            Your digital token has been successfully created.
-          </p>
-
-          <div className="token-ticket">
-            <span>YOUR TOKEN</span>
-            <strong>{token.tokenNumber}</strong>
-
-            <div className="token-status">
-              <span></span>
-              {token.status}
-            </div>
-          </div>
-
-          <div className="token-meta">
-            <div>
-              <small>SERVICE</small>
-              <strong>
-                {token.service?.serviceName || "Service"}
-              </strong>
-            </div>
-
-            <div>
-              <small>STATUS</small>
-              <strong>{token.status}</strong>
-            </div>
-          </div>
-
-          <div className="token-actions">
-            <Link
-              to="/my-tokens"
-              className="primary-token-button"
-            >
-              Track My Token →
-            </Link>
-
-            <Link
-              to="/dashboard"
-              className="secondary-token-button"
-            >
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
+  const completeToken = (tokenId) => {
+    fetch(
+      http://localhost:8080/api/admin/complete/${tokenId},
+      {
+        method: "PUT",
+      }
+    )
+      .then((response) => response.json())
+      .then(() => {
+        getQueue();
+      })
+      .catch((error) => console.error(error));
+  };
 
   return (
-    <main className="token-page">
-      <div className="token-orb token-orb-one"></div>
-      <div className="token-orb token-orb-two"></div>
+    <div style={styles.container}>
+      <h1>Admin Dashboard</h1>
 
-      <div className="token-wrapper">
-        {/* LEFT SECTION */}
-        <div className="token-intro">
-          <div className="token-badge">
-            <span></span>
-            DIGITAL QUEUE
-          </div>
+      <select
+        value={serviceId}
+        onChange={(e) => setServiceId(e.target.value)}
+        style={styles.select}
+      >
+        <option value="">Select Service</option>
 
-          <h1>
-            Skip the
-            <br />
-            <span>waiting line.</span>
-          </h1>
+        {services.map((service) => (
+          <option key={service.id} value={service.id}>
+            {service.serviceName}
+          </option>
+        ))}
+      </select>
 
-          <p>
-            Choose your location and service to receive
-            your digital queue token.
-          </p>
+      <div style={styles.buttons}>
+        <button onClick={getQueue} style={styles.blueButton}>
+          View Queue
+        </button>
 
-          <div className="token-benefits">
-            <div>
-              <span>✓</span>
-              No physical waiting
-            </div>
-
-            <div>
-              <span>✓</span>
-              Track your queue position
-            </div>
-
-            <div>
-              <span>✓</span>
-              Arrive at the right time
-            </div>
-          </div>
-        </div>
-
-        {/* TOKEN FORM */}
-        <div className="get-token-card">
-          <div className="token-card-label">
-            GET YOUR TOKEN
-          </div>
-
-          <h2>Join a queue</h2>
-
-          <p>Select your location and required service.</p>
-
-          {/* LOCATION SELECT */}
-          <label htmlFor="location">Select Location</label>
-
-          <div className="service-select">
-            <select
-              id="location"
-              value={selectedLocation}
-              onChange={(e) => {
-                setSelectedLocation(e.target.value);
-                setError("");
-              }}
-              disabled={loadingLocations}
-            >
-              <option value="">
-                {loadingLocations
-                  ? "Loading locations..."
-                  : "Choose a location"}
-              </option>
-
-              {locations.map((location) => (
-                <option
-                  key={location.id}
-                  value={location.id}
-                >
-                  {location.name} — {location.building}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* SERVICE SELECT */}
-          <label htmlFor="service">Select Service</label>
-
-          <div className="service-select">
-            <select
-              id="service"
-              value={selectedService}
-              onChange={(e) => {
-                setSelectedService(e.target.value);
-                setError("");
-              }}
-              disabled={
-                !selectedLocation ||
-                loadingServices ||
-                loadingLocations
-              }
-            >
-              <option value="">
-                {!selectedLocation
-                  ? "Select a location first"
-                  : loadingServices
-                    ? "Loading services..."
-                    : services.length === 0
-                      ? "No services available"
-                      : "Choose a service"}
-              </option>
-
-              {services.map((service) => (
-                <option
-                  key={service.id}
-                  value={service.id}
-                >
-                  {service.serviceName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {selectedLocation && locations.length > 0 && (
-            <div className="token-security">
-              {locations.find(
-                (location) =>
-                  String(location.id) === selectedLocation
-              )?.building || ""}
-              {" · "}
-              {locations.find(
-                (location) =>
-                  String(location.id) === selectedLocation
-              )?.floor || ""}
-            </div>
-          )}
-
-          {error && (
-            <div className="token-error">
-              {error}
-            </div>
-          )}
-
-          <button
-            className="generate-token-button"
-            onClick={handleGenerate}
-            disabled={
-              loadingLocations ||
-              loadingServices ||
-              generating ||
-              !selectedLocation ||
-              !selectedService
-            }
-          >
-            {generating
-              ? "Generating..."
-              : "Generate My Token"}
-
-            {!generating && <span>→</span>}
-          </button>
-
-          <div className="token-security">
-            🔒 Your queue information is protected
-          </div>
-        </div>
+        <button onClick={callNext} style={styles.greenButton}>
+          Call Next
+        </button>
       </div>
-    </main>
+
+      <h2>Waiting Queue</h2>
+
+      {queue.length === 0 ? (
+        <p>No waiting tokens.</p>
+      ) : (
+        <div>
+          {queue.map((token) => (
+            <div key={token.id} style={styles.card}>
+              <h3>Token: {token.tokenNumber}</h3>
+
+              <p>User: {token.user?.name}</p>
+
+              <p>Status: {token.status}</p>
+
+              <button
+                onClick={() => completeToken(token.id)}
+                style={styles.completeButton}
+              >
+                Complete
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-export default GetToken;
+const styles = {
+  container: {
+    padding: "40px",
+    textAlign: "center",
+  },
+
+  select: {
+    width: "300px",
+    padding: "12px",
+    margin: "20px",
+  },
+
+  buttons: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "15px",
+  },
+
+  blueButton: {
+    padding: "12px 20px",
+    backgroundColor: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+
+  greenButton: {
+    padding: "12px 20px",
+    backgroundColor: "#16a34a",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+
+  completeButton: {
+    padding: "8px 15px",
+    backgroundColor: "#dc2626",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+
+  card: {
+    maxWidth: "600px",
+    margin: "15px auto",
+    padding: "20px",
+    borderRadius: "10px",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+  },
+};
+
+export default AdminDashboard;import { useEffect, useState } from "react";
+
+function AdminDashboard() {
+  const [serviceId, setServiceId] = useState("");
+  const [services, setServices] = useState([]);
+  const [queue, setQueue] = useState([]);
+
+  useEffect(() => {
+    fetch("http://localhost:8080/api/services")
+      .then((response) => response.json())
+      .then((data) => setServices(data))
+      .catch((error) => console.error(error));
+  }, []);
+
+  const getQueue = () => {
+    if (!serviceId) {
+      return;
+    }
+
+    fetch(
+      http://localhost:8080/api/admin/queue/${serviceId}
+    )
+      .then((response) => response.json())
+      .then((data) => setQueue(data))
+      .catch((error) => console.error(error));
+  };
+
+  const callNext = () => {
+    if (!serviceId) {
+      return;
+    }
+
+    fetch(
+      http://localhost:8080/api/admin/next/${serviceId},
+      {
+        method: "POST",
+      }
+    )
+      .then((response) => response.json())
+      .then(() => {
+        getQueue();
+      })
+      .catch((error) => console.error(error));
+  };
+
+  const completeToken = (tokenId) => {
+    fetch(
+      http://localhost:8080/api/admin/complete/${tokenId},
+      {
+        method: "PUT",
+      }
+    )
+      .then((response) => response.json())
+      .then(() => {
+        getQueue();
+      })
+      .catch((error) => console.error(error));
+  };
+
+  return (
+    <div style={styles.container}>
+      <h1>Admin Dashboard</h1>
+
+      <select
+        value={serviceId}
+        onChange={(e) => setServiceId(e.target.value)}
+        style={styles.select}
+      >
+        <option value="">Select Service</option>
+
+        {services.map((service) => (
+          <option key={service.id} value={service.id}>
+            {service.serviceName}
+          </option>
+        ))}
+      </select>
+
+      <div style={styles.buttons}>
+        <button onClick={getQueue} style={styles.blueButton}>
+          View Queue
+        </button>
+
+        <button onClick={callNext} style={styles.greenButton}>
+          Call Next
+        </button>
+      </div>
+
+      <h2>Waiting Queue</h2>
+
+      {queue.length === 0 ? (
+        <p>No waiting tokens.</p>
+      ) : (
+        <div>
+          {queue.map((token) => (
+            <div key={token.id} style={styles.card}>
+              <h3>Token: {token.tokenNumber}</h3>
+
+              <p>User: {token.user?.name}</p>
+
+              <p>Status: {token.status}</p>
+
+              <button
+                onClick={() => completeToken(token.id)}
+                style={styles.completeButton}
+              >
+                Complete
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const styles = {
+  container: {
+    padding: "40px",
+    textAlign: "center",
+  },
+
+  select: {
+    width: "300px",
+    padding: "12px",
+    margin: "20px",
+  },
+
+  buttons: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "15px",
+  },
+
+  blueButton: {
+    padding: "12px 20px",
+    backgroundColor: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+
+  greenButton: {
+    padding: "12px 20px",
+    backgroundColor: "#16a34a",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+
+  completeButton: {
+    padding: "8px 15px",
+    backgroundColor: "#dc2626",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+
+  card: {
+    maxWidth: "600px",
+    margin: "15px auto",
+    padding: "20px",
+    borderRadius: "10px",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+  },
+};
+
+export default AdminDashboard;
