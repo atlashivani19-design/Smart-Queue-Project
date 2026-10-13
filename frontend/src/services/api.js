@@ -1,54 +1,48 @@
 
-
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "https://smart-queue-project-3.onrender.com/api"
+  baseURL:
+    import.meta.env.VITE_API_BASE_URL ||
+    "http://localhost:8080/api",
 });
 
-
-
-// Authentication APIs
+// Authentication
 export const registerUser = (data) =>
-    API.post("/auth/register", data);
+  API.post("/auth/register", data);
 
 export const loginUser = (data) =>
-    API.post("/auth/login", data);
+  API.post("/auth/login", data);
 
-// Service APIs
-export const getServices = () =>
-    API.get("/services");
+// Services
+export const getServices = () => API.get("/services");
 
 export const getServiceById = (id) =>
-    API.get(`/services/${id}`);
+  API.get(`/services/${id}`);
 
-// Location APIs
-export const getLocations = () =>
-    API.get("/locations");
+// Locations
+export const getLocations = () => API.get("/locations");
 
-// Get services for a selected location
 export const getServicesByLocation = (locationId) =>
-    API.get(`/services/location/${locationId}`);
+  API.get(`/services/location/${locationId}`);
 
-// Token APIs
+// Tokens
 export const generateToken = (userId, serviceId) =>
-    API.post("/tokens", null, {
-        params: {
-            userId,
-            serviceId
-        }
-    });
+  API.post("/tokens", null, {
+    params: { userId, serviceId },
+  });
 
 export const getTokenById = (id) =>
-    API.get(`/tokens/${id}`);
+  API.get(`/tokens/${id}`);
 
 export const getAllTokens = () =>
-    API.get("/tokens");
+  API.get("/tokens");
 
 export const getUserTokens = (userId) =>
-    API.get(`/tokens/user/${userId}`);
+  API.get(`/tokens/user/${userId}`);
 
 export const cancelToken = (id) =>
-    API.put(`/tokens/${id}/cancel`);
+  API.put(`/tokens/${id}/cancel`);
 
 export default API;
+
