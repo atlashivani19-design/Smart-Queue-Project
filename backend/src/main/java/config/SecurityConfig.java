@@ -28,8 +28,9 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOrigins(List.of(
-            "https://smartqueue-inky.vercel.app"
-        ));
+    "https://smartqueue-inky.vercel.app",
+    "https://smart-queue-jd7j2yo5ad-shivani-a318.vercel.app"
+));
 
         configuration.setAllowedMethods(List.of(
             "GET", "POST", "PUT", "DELETE", "OPTIONS"
